@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Glowstep – Play online | JU Games</title>
+    <meta name="description" content="Watch the glowing path, then walk it from memory. Play Glowstep free in your browser.">
+    <meta name="theme-color" content="#2e2a78">
+    <link rel="icon" type="image/png" href="TemplateData/icon.png">
+    <style>
+      html, body { margin: 0; height: 100%; background: linear-gradient(180deg, #6a58b8, #2e2a78); overflow: hidden; }
+      body { display: grid; place-items: center; touch-action: none; -webkit-user-select: none; user-select: none;
+             font: 600 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #ffffff; }
+      /* Portrait game: fill the height on desktop, the whole screen on phones. */
+      #frame { position: relative; height: 100dvh; aspect-ratio: 9 / 16; max-width: 100vw; }
+      #unity-canvas { width: 100%; height: 100%; display: block; background: #2e2a78; outline: none; }
+      #loading { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 20px; background: linear-gradient(180deg, #6c6cc8, #ae97de 60%, #f8bfa6); }
+      #loading img { width: 120px; height: 120px; border-radius: 28px; box-shadow: 0 8px 32px rgba(0, 0, 0, .4); }
+      #bar { width: 200px; height: 12px; border-radius: 6px; background: rgba(255, 255, 255, .3); overflow: hidden; }
+      #fill { width: 0; height: 100%; border-radius: 6px; background: linear-gradient(90deg, #ff8bc8, #ffd27a, #7de3ff, #8cf5d2); transition: width .2s; }
+      #error { display: none; max-width: 280px; text-align: center; color: #2e2a78; }
+      @media (max-aspect-ratio: 9 / 16) { #frame { width: 100vw; height: auto; max-height: 100dvh; } }
+    </style>
+  </head>
+  <body>
+    <div id="frame">
+      <canvas id="unity-canvas" tabindex="-1"></canvas>
+      <div id="loading">
+        <img src="TemplateData/icon.png" alt="">
+        <div id="bar"><div id="fill"></div></div>
+        <div id="error"></div>
+      </div>
+    </div>
+    <script src="Build/196abd1ae2c5191bdf7b36e96611d749.loader.js"></script>
+    <script>
+      var canvas = document.getElementById("unity-canvas");
+
+      // Unity misses a click whose mouse-down and mouse-up land in the same frame (a quick trackpad
+      // tap on a slow device), so hold back a too-quick release until two frames have rendered.
+      var MIN_PRESS_FRAMES = 2, frame = 0, downFrame = -MIN_PRESS_FRAMES;
+      (function tick() { frame++; requestAnimationFrame(tick); })();
+      ["pointerdown", "mousedown"].forEach(function (type) {
+        window.addEventListener(type, function (e) { if (e.target === canvas) downFrame = frame; }, true);
+      });
+      ["pointerup", "mouseup"].forEach(function (type) {
+        window.addEventListener(type, function (e) {
+          if (!e.isTrusted || e.target !== canvas || e.pointerType === "touch" || frame - downFrame >= MIN_PRESS_FRAMES) return;
+          e.stopImmediatePropagation();
+          var late = new e.constructor(e.type, e), releaseAt = downFrame + MIN_PRESS_FRAMES;
+          (function wait() {
+            if (frame >= releaseAt) canvas.dispatchEvent(late); else requestAnimationFrame(wait);
+          })();
+        }, true);
+      });
+
+      createUnityInstance(canvas, {
+        dataUrl: "Build/3a2a162b630aba7cbaf24e25c804e48d.data.unityweb",
+        frameworkUrl: "Build/8b4a96a69c5054d673e221acb188c32d.framework.js.unityweb",
+        codeUrl: "Build/9806ccd31a91219a6b7c6054833d9cba.wasm.unityweb",
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: "jugames",
+        productName: "Glowstep",
+        productVersion: "0.1.0",
+        autoSyncPersistentDataPath: true, // SaveService's save.json survives reloads (IndexedDB)
+      }, function (progress) {
+        document.getElementById("fill").style.width = Math.round(progress * 100) + "%";
+      }).then(function () {
+        document.getElementById("loading").remove();
+        canvas.focus();
+      }).catch(function (message) {
+        document.getElementById("bar").style.display = "none";
+        var error = document.getElementById("error");
+        error.textContent = "Sorry, the game couldn't start in this browser. " + message;
+        error.style.display = "block";
+      });
+    </script>
+  </body>
+</html>
